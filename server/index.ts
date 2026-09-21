@@ -1117,9 +1117,5 @@ const app = new Elysia()
     });
     return { success: true };
   })
+export default app;
 
-  .listen(3000);
-
-console.log(
-  `🦊 Mixholic API running at http://${app.server?.hostname}:${app.server?.port}`
-);
