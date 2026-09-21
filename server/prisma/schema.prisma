@@ -1,0 +1,163 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                Int                  @id @default(autoincrement())
+  email             String               @unique
+  username          String               @unique
+  password          String
+  avatarUrl         String?
+  bio               String?
+  gender            Gender?
+  lastSeenAt        DateTime?
+  nowPlayingVideoId String?
+  nowPlayingTitle   String?
+  nowPlayingArtist  String?
+  createdAt         DateTime             @default(now())
+  updatedAt         DateTime             @updatedAt
+  favorites         Favorite[]
+  playlists         Playlist[]
+  resetTokens       PasswordResetToken[]
+  sentRequests      Friendship[]         @relation("FriendRequester")
+  receivedRequests  Friendship[]         @relation("FriendAddressee")
+  listeningStats    ListeningStat[]
+  messages          Message[]
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+}
+
+model Friendship {
+  id          Int              @id @default(autoincrement())
+  requesterId Int
+  requester   User             @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId Int
+  addressee   User             @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  status      FriendshipStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+
+  // --- Direct message streak (TikTok-style) ---
+  // A calendar day only "counts" once BOTH sides have sent at least one
+  // message that day. streakLastDate is the last calendar day (UTC
+  // midnight) that counted; requester/addresseeLastMsgAt track the last
+  // calendar day *each side* sent something, so we can tell when both
+  // have checked in "today". Streak is considered broken (shown as 0)
+  // once streakLastDate is more than one day old — see streakInfoFor().
+  streakCount        Int       @default(0)
+  streakLastDate     DateTime?
+  requesterLastMsgAt DateTime?
+  addresseeLastMsgAt DateTime?
+
+  // Last time each side "opened" this conversation — used to compute
+  // unread counts / bold badges. Independent of the streak fields above.
+  requesterLastReadAt DateTime?
+  addresseeLastReadAt DateTime?
+
+  messages Message[]
+
+  @@unique([requesterId, addresseeId])
+}
+
+enum MessageType {
+  TEXT
+  SONG
+}
+
+// A direct message between two friends — either plain text or a shared
+// song (videoId + the metadata needed to render a song card without an
+// extra YouTube lookup).
+model Message {
+  id           Int         @id @default(autoincrement())
+  friendshipId Int
+  friendship   Friendship  @relation(fields: [friendshipId], references: [id], onDelete: Cascade)
+  senderId     Int
+  sender       User        @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  type         MessageType @default(TEXT)
+  text         String?
+  videoId      String?
+  videoTitle   String?
+  videoArtist  String?
+  videoThumb   String?
+  createdAt    DateTime    @default(now())
+
+  @@index([friendshipId, createdAt])
+}
+
+model PasswordResetToken {
+  id        Int       @id @default(autoincrement())
+  userId    Int
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model Favorite {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId   String
+  title     String?
+  artist    String?
+  thumb     String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, videoId])
+}
+
+model Playlist {
+  id        Int             @id @default(autoincrement())
+  userId    Int
+  user      User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  tracks    PlaylistTrack[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}
+
+model PlaylistTrack {
+  id         Int      @id @default(autoincrement())
+  playlistId Int
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  videoId    String
+  title      String?
+  artist     String?
+  thumb      String?
+  createdAt  DateTime @default(now())
+
+  @@unique([playlistId, videoId])
+}
+
+// One row per (user, track, month) — the frontend pings this while a track
+// is playing so listening stats build up automatically, no manual logging.
+// "yearMonth" is a plain "YYYY-MM" string so monthly totals are an exact
+// match and yearly totals are a cheap `startsWith` filter.
+model ListeningStat {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  videoId   String
+  title     String?
+  artist    String?
+  yearMonth String
+  playCount Int      @default(0)
+  seconds   Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, videoId, yearMonth])
+}
