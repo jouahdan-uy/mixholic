@@ -8,7 +8,7 @@
     "socket": "bun run socket.ts"
   },
   "devDependencies": {
-    "@types/bun": "latest",
+    "@types/bun": "^1.4.2",
     "@types/pg": "^8.23.1",
     "prisma": "7.10.0"
   },
