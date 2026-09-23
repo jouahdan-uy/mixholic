@@ -49,7 +49,7 @@ setInterval(() => {
 
 function clientIp(request: Request, server: { requestIP?: (req: Request) => { address: string } | null } | null) {
   const forwarded = request.headers.get("x-forwarded-for");
-  if (forwarded) return forwarded.split(",")[0].trim();
+  if (forwarded) return forwarded.split(",")[0]?.trim() || "";
   return server?.requestIP?.(request)?.address || "unknown";
 }
 
