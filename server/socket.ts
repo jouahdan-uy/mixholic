@@ -17,8 +17,8 @@ import { prisma } from "./src/lib/prisma.ts";
 import { verifyToken } from "./src/lib/auth.ts";
 import { findFriendship, bumpStreak, streakInfoFor, markRead, unreadCountFor } from "./src/lib/dm.ts";
 
-const PORT = Number(process.env.SOCKET_PORT) || 3001;
-const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+const PORT = Number(process.env.PORT) || Number(process.env.SOCKET_PORT) || 3001;
+const FRONTEND_URL = process.env.FRONTEND_URL || "https://mixholic.vercel.app";
 
 const httpServer = createServer();
 const io = new Server(httpServer, {
